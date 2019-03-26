@@ -1,5 +1,5 @@
 
-name := "fink-gcs-fs"
+name := "flink-gcs-fs"
 
 organization := "binx.io"
 
@@ -24,5 +24,8 @@ libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
 // testing configuration
 fork in Test := true
 parallelExecution := false
+
+// disable using the Scala version in output paths and artifacts
+crossPaths := false
 
 licenses +=("Apache-2.0", url("http://opensource.org/licenses/apache2.0.php"))
