@@ -104,21 +104,21 @@ parallelism.default: 1
 # Supported backends are 'jobmanager', 'filesystem', 'rocksdb', or the
 # <class-name-of-factory>.
 #
-# state.backend: filesystem
+state.backend: filesystem
 
 # Directory for checkpoints filesystem, when using any of the default bundled
 # state backends.
 #
-# state.checkpoints.dir: hdfs://namenode-host:port/flink-checkpoints
+state.checkpoints.dir: gs://flink-gcs-fs-state/flink.state
 
 # Default target directory for savepoints, optional.
 #
-# state.savepoints.dir: hdfs://namenode-host:port/flink-checkpoints
+#state.savepoints.dir: gs://flink-gcs-fs-savepoints/flink.state
 
 # Flag to enable/disable incremental checkpoints for backends that
 # support incremental checkpoints (like the RocksDB state backend). 
 #
-# state.backend.incremental: false
+state.backend.incremental: true
 
 #==============================================================================
 # Web Frontend

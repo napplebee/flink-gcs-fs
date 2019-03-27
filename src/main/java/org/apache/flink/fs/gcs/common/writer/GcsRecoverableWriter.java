@@ -34,13 +34,7 @@ import java.io.IOException;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * An implementation of the {@link RecoverableWriter} against S3.
- *
- * <p>This implementation makes heavy use of MultiPart Uploads in S3 to persist
- * intermediate data as soon as possible.
- *
- * <p>This class partially reuses utility classes and implementations from the Hadoop
- * project, specifically around configuring S3 requests and handling retries.
+ * An implementation of the {@link RecoverableWriter} against GCS.
  */
 @PublicEvolving
 public class GcsRecoverableWriter implements RecoverableWriter {
@@ -50,10 +44,12 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 
 	@VisibleForTesting
 	public GcsRecoverableWriter(final FileSystem hadoopFileSystem) {
+		LOG.debug("Creating GcsRecoverableWriter");
 		this.fileSystem = checkNotNull(hadoopFileSystem);
 	}
 
 	private static GcsRecoverable castToGcsRecoverable(CommitRecoverable recoverable) {
+		LOG.debug("Casting CommitRecoverable to GcsRecoverable");
 		if (recoverable instanceof GcsRecoverable) {
 			return (GcsRecoverable) recoverable;
 		}

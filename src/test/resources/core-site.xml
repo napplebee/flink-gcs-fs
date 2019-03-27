@@ -3,7 +3,7 @@
 <configuration>
     <property>
         <name>fs.gs.project.id</name>
-        <value></value>
+        <value>speeltuin-dennis-vriend</value>
         <description>
             Required. Google Cloud Project ID with access to configured GCS buckets.
         </description>
@@ -128,7 +128,7 @@
     -->
     <property>
         <name>fs.gs.auth.service.account.json.keyfile</name>
-        <value></value>
+        <value>/Users/dennis/projects/flink-gcs-fs/src/test/resources/gcs-python-test-service-account.json</value>
         <description>
             The path to the json keyfile for the service account.
         </description>

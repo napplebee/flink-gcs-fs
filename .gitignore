@@ -4,3 +4,4 @@ target/
 .vscode/
 .classpath
 .settings/
+*service-account.json

@@ -37,5 +37,6 @@ licenses +=("Apache-2.0", url("http://opensource.org/licenses/apache2.0.php"))
 // Flink will look for the “core-site.xml” and “hdfs-site.xml” files in the specified directory.
 envVars in Test := Map(
   "HADOOP_CONF_DIR" -> "/Users/dennis/projects/flink-gcs-fs/src/test/resources",
+  "FLINK_CONF_DIR" -> "/Users/dennis/projects/flink-gcs-fs/src/test/resources",
   "HADOOP_HOME" -> "/tmp"
 )

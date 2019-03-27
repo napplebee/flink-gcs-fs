@@ -23,6 +23,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -31,12 +33,13 @@ import java.io.IOException;
  * Serializer implementation for a {@link GcsRecoverableSerializer}.
  */
 public class GcsRecoverableSerializer implements SimpleVersionedSerializer<GcsRecoverable> {
-
+	private static final Logger LOG = LoggerFactory.getLogger(GcsRecoverableSerializer.class);
 	static final GcsRecoverableSerializer INSTANCE = new GcsRecoverableSerializer();
 
 	private final Kryo kyro;
 
 	public GcsRecoverableSerializer() {
+		LOG.debug("Creating GcsRecoverableSerializer");
 		this.kyro = new Kryo();
 		this.kyro.register(GcsRecoverable.class);
 	}
@@ -48,6 +51,7 @@ public class GcsRecoverableSerializer implements SimpleVersionedSerializer<GcsRe
 
 	@Override
 	public byte[] serialize(GcsRecoverable gcsRecoverable) throws IOException {
+		LOG.debug("Serializing: {}", gcsRecoverable);
 		try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 			try (Output output = new Output(baos)) {
 				kyro.writeObject(output, gcsRecoverable);
@@ -58,12 +62,14 @@ public class GcsRecoverableSerializer implements SimpleVersionedSerializer<GcsRe
 
 	@Override
 	public GcsRecoverable deserialize(int version, byte[] serialized) throws IOException {
+		LOG.debug("Deserializing recoverable for version: {}", version);
 		switch (version) {
 			case 1:
 				try (Input input = new Input(serialized)) {
 					return this.kyro.readObject(input, GcsRecoverable.class);
 				}
 			default:
+				LOG.error("Unrecognized version or corrupt state: {}", version);
 				throw new IOException("Unrecognized version or corrupt state: " + version);
 		}
 	}

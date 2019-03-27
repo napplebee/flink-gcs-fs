@@ -42,11 +42,13 @@ public class FlinkGcsFileSystem extends HadoopFileSystem {
 
 	FlinkGcsFileSystem(org.apache.hadoop.fs.FileSystem hadoopFileSystem) throws IOException {
 		super(hadoopFileSystem);
+		LOG.debug("Creating FlinkGcsFileSystem");
 		this.hadoopFileSystem = hadoopFileSystem;
 	}
 
 	@Override
 	public RecoverableWriter createRecoverableWriter() {
+		LOG.debug("Creating a recoverable writer");
 		return new GcsRecoverableWriter(this.hadoopFileSystem);
 	}
 }
