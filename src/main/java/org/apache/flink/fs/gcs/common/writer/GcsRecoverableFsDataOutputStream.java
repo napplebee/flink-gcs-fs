@@ -56,9 +56,11 @@ public final class GcsRecoverableFsDataOutputStream extends RecoverableFsDataOut
 
 	GcsRecoverableFsDataOutputStream(FileSystem fileSystem, GcsRecoverable file) throws IOException {
 		this(fileSystem, file, 0);
+		LOG.debug("Creating GcsRecoverableFsDataOutputStream for uri={} file={}", fileSystem.getUri(), file);
 	}
 
 	GcsRecoverableFsDataOutputStream(FileSystem fileSystem, GcsRecoverable file, int part) throws IOException {
+		LOG.debug("Creating GcsRecoverableFsDataOutputStream for uri={}, file={}, part={}", fileSystem.getUri(), file, part);
 		this.fileSystem = fileSystem;
 		this.file = file;
 		this.stream = new ByteArrayOutputStream();

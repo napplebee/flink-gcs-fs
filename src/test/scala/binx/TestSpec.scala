@@ -28,13 +28,6 @@ abstract class TestSpec extends FlatSpec with Matchers {
     UUID.randomUUID().toString()
   }
 
-  /**
-    * A unique bucket name
-    */
-  val bucketName: String = {
-    s"flink-gcs-fs-test-${randomId()}"
-  }
-
   def loadConfiguration(): Configuration = {
     GlobalConfiguration.loadConfiguration()
   }
@@ -53,7 +46,8 @@ abstract class TestSpec extends FlatSpec with Matchers {
     * for bounded or unbounded streams of data
     */
   def withDataStreamEnv(f: StreamExecutionEnvironment => Unit): Unit = {
-    val env = StreamExecutionEnvironment.createLocalEnvironment(2, loadConfiguration())
+    log.info("WithDataStreamEnv, num-cpu={}", StreamExecutionEnvironment.getDefaultLocalParallelism)
+    val env = StreamExecutionEnvironment.createLocalEnvironment(StreamExecutionEnvironment.getDefaultLocalParallelism, loadConfiguration())
     f(env)
   }
 }

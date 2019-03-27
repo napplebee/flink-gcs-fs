@@ -40,6 +40,7 @@ public class GcsCommitter implements RecoverableFsDataOutputStream.Committer {
 	private final FileSystem fileSystem;
 
 	public GcsCommitter(FileSystem fileSystem, GcsRecoverable recoverable) {
+		LOG.debug("Creating GcsCommitter uri={}", fileSystem.getUri());
 		this.fileSystem = fileSystem;
 		this.recoverable = recoverable;
 	}

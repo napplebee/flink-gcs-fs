@@ -37,9 +37,12 @@ public class GcsRecoverable implements RecoverableWriter.ResumeRecoverable {
 	/**
 	 * Empty default constructor for Kyro to create the (de)serializer.
 	 */
-	public GcsRecoverable() { }
+	public GcsRecoverable() {
+		LOG.debug("Creating GcsRecoverable");
+	}
 
 	public GcsRecoverable(Path gcsFullPath) {
+		LOG.debug("Creating GcsRecoverable for path={}", gcsFullPath);
 		this.bucketName = gcsFullPath.toUri().getAuthority();
 		this.objectName = gcsFullPath.toUri().getPath().substring(1);
 		this.pos = 0;

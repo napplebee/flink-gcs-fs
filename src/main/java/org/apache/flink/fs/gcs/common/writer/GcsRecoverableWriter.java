@@ -43,8 +43,8 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 	private final FileSystem fileSystem;
 
 	@VisibleForTesting
-	public GcsRecoverableWriter(final FileSystem hadoopFileSystem) {
-		LOG.debug("Creating GcsRecoverableWriter");
+	public GcsRecoverableWriter(FileSystem hadoopFileSystem) {
+		LOG.debug("Creating GcsRecoverableWriter for uri={}", hadoopFileSystem.getUri());
 		this.fileSystem = checkNotNull(hadoopFileSystem);
 	}
 

@@ -18,6 +18,7 @@
 
 package org.apache.flink.fs.gcs.common;
 
+import org.apache.flink.core.fs.FileSystemKind;
 import org.apache.flink.core.fs.RecoverableWriter;
 import org.apache.flink.fs.gcs.common.writer.GcsRecoverableWriter;
 import org.apache.flink.runtime.fs.hdfs.HadoopFileSystem;
@@ -35,20 +36,28 @@ public class FlinkGcsFileSystem extends HadoopFileSystem {
 
 	// ------------------- Recoverable Writer Parameters -------------------
 
-	/** The minimum size of a part in the multipart upload, except for the last part: 64 MIBytes. */
+	/**
+	 * The minimum size of a part in the multipart upload, except for the last part: 64 MIBytes.
+	 */
 	public static final long GCS_MULTIPART_MIN_PART_SIZE = 64L << 20;
 
 	private final org.apache.hadoop.fs.FileSystem hadoopFileSystem;
 
 	FlinkGcsFileSystem(org.apache.hadoop.fs.FileSystem hadoopFileSystem) throws IOException {
 		super(hadoopFileSystem);
-		LOG.debug("Creating FlinkGcsFileSystem");
+		LOG.debug("Creating FlinkGcsFileSystem for uri={}", hadoopFileSystem.getUri());
 		this.hadoopFileSystem = hadoopFileSystem;
 	}
 
 	@Override
 	public RecoverableWriter createRecoverableWriter() {
-		LOG.debug("Creating a recoverable writer");
+		LOG.debug("Creating a recoverable writer for uri={}", hadoopFileSystem.toString());
 		return new GcsRecoverableWriter(this.hadoopFileSystem);
+	}
+
+	@Override
+	public FileSystemKind getKind() {
+		LOG.debug("Returning FileSystemKind");
+		return FileSystemKind.OBJECT_STORE;
 	}
 }
