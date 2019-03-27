@@ -43,7 +43,6 @@ public class FlinkGcsFileSystem extends HadoopFileSystem {
 
 	FlinkGcsFileSystem(FileSystem hadoopFileSystem) throws IOException {
 		super(hadoopFileSystem);
-
 		this.hadoopFileSystem = hadoopFileSystem;
 	}
 
