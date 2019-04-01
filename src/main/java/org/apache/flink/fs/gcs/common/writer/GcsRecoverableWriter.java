@@ -18,20 +18,22 @@
 
 package org.apache.flink.fs.gcs.common.writer;
 
+import com.google.cloud.Restorable;
+import com.google.cloud.RestorableState;
+import com.google.cloud.WriteChannel;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.core.fs.RecoverableFsDataOutputStream;
 import org.apache.flink.core.fs.RecoverableWriter;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
-
-import org.apache.hadoop.fs.FileSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-
-import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * An implementation of the {@link RecoverableWriter} against GCS.
@@ -40,21 +42,36 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class GcsRecoverableWriter implements RecoverableWriter {
 	private static final Logger LOG = LoggerFactory.getLogger(GcsRecoverableWriter.class);
 
-	private final FileSystem fileSystem;
-
-	@VisibleForTesting
-	public GcsRecoverableWriter(FileSystem hadoopFileSystem) {
-		LOG.debug("Creating GcsRecoverableWriter for uri={}", hadoopFileSystem.getUri());
-		this.fileSystem = checkNotNull(hadoopFileSystem);
+	public GcsRecoverableWriter() {
+		LOG.debug("Constructor: Creating GcsRecoverableWriter");
 	}
 
-	private static GcsRecoverable castToGcsRecoverable(CommitRecoverable recoverable) {
+	public static GcsRecoverable castToGcsRecoverable(CommitRecoverable recoverable) {
 		LOG.debug("Casting CommitRecoverable to GcsRecoverable");
 		if (recoverable instanceof GcsRecoverable) {
 			return (GcsRecoverable) recoverable;
 		}
 		throw new IllegalArgumentException(
 			"GCS File System cannot recover recoverable for other file system: " + recoverable);
+	}
+
+	public RestorableState<WriteChannel> captureState(BlobInfo blobInfo) {
+		LOG.info("captureState(): blobInfo={}", blobInfo);
+		try {
+			Storage storage = StorageOptions.getDefaultInstance().getService();
+			return storage.writer(blobInfo).capture();
+		} catch (Exception ex) {
+			LOG.error("Could not capture state", ex);
+			throw ex;
+		}
+	}
+
+	public static String removeRootSlash(String name) {
+		if(name.startsWith("/")) {
+			return name.substring(1, name.length());
+		} else {
+			return name;
+		}
 	}
 
 	/**
@@ -68,8 +85,14 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 	 */
 	@Override
 	public RecoverableFsDataOutputStream open(Path path) throws IOException {
-		LOG.info("Open {}", path.toString());
-		return new GcsRecoverableFsDataOutputStream(this.fileSystem, new GcsRecoverable(path));
+		String name = removeRootSlash(path.toUri().getPath());
+		String bucket = path.toUri().getHost();
+		LOG.info("open(): path={}, name={}, bucket={}", path, name, bucket);
+		BlobId blobId = BlobId.of(bucket, name);
+		BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+		return new GcsRecoverableFsDataOutputStream(
+				new GcsRecoverable(blobInfo, captureState(blobInfo), 0L)
+		);
 	}
 
 	/**
@@ -87,12 +110,8 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 	 */
 	@Override
 	public RecoverableFsDataOutputStream recover(ResumeRecoverable resumable) throws IOException {
-		LOG.info("Recover {}", resumable.toString());
-
-		return new GcsRecoverableFsDataOutputStream(
-			this.fileSystem,
-			castToGcsRecoverable(resumable)
-		);
+		LOG.info("recover(): returning RecoverableFsDataOutputStream with resumable={}", resumable);
+		return new GcsRecoverableFsDataOutputStream(castToGcsRecoverable(resumable));
 	}
 
 	@Override
@@ -116,10 +135,9 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 	 */
 	@Override
 	public RecoverableFsDataOutputStream.Committer recoverForCommit(CommitRecoverable recoverable) throws IOException {
-		LOG.info("RecoverForCommit {}", recoverable.toString());
+		LOG.info("recoverForCommit(): return a committer for recoverable={}", recoverable);
 		final GcsRecoverable gcsRecoverable = castToGcsRecoverable(recoverable);
 		final RecoverableFsDataOutputStream recovered = recover(gcsRecoverable);
-
 		return recovered.closeForCommit();
 	}
 
@@ -131,7 +149,7 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 	@Override
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public SimpleVersionedSerializer<CommitRecoverable> getCommitRecoverableSerializer() {
-		LOG.info("getCommitRecoverableSerializer");
+		LOG.info("getCommitRecoverableSerializer()");
 		return (SimpleVersionedSerializer) GcsRecoverableSerializer.INSTANCE;
 	}
 
@@ -143,8 +161,7 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 	@Override
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public SimpleVersionedSerializer<ResumeRecoverable> getResumeRecoverableSerializer() {
-		LOG.info("getResumeRecoverableSerializer");
-
+		LOG.info("getResumeRecoverableSerializer()");
 		return (SimpleVersionedSerializer) GcsRecoverableSerializer.INSTANCE;
 	}
 
@@ -160,6 +177,6 @@ public class GcsRecoverableWriter implements RecoverableWriter {
 	 */
 	@Override
 	public boolean supportsResume() {
-		return false;
+		return true;
 	}
 }

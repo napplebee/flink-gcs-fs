@@ -39,7 +39,7 @@ public class GcsFileSystemFactory implements FileSystemFactory {
 	private Configuration configuration;
 
 	private org.apache.hadoop.conf.Configuration buildHadoopConfiguration(Configuration conf) {
-		LOG.debug("Building Hadoop Configuration");
+		LOG.debug("buildHadoopConfiguration(): Building Hadoop Configuration");
 		LOG.debug("Flink configuration:\n{}", conf.toString());
 		final org.apache.hadoop.conf.Configuration hadoopConf = HadoopUtils.getHadoopConfiguration(configuration);
 		LOG.debug("Hadoop configuration:\n{}", hadoopConf);
@@ -47,7 +47,7 @@ public class GcsFileSystemFactory implements FileSystemFactory {
 	}
 
 	private FileSystem buildFlinkGcsFileSystem(URI uri, org.apache.hadoop.conf.Configuration conf) throws IOException {
-		LOG.debug("Building and returning a FlinkGcsFileSystem");
+		LOG.debug("buildFlinkGcsFileSystem(): Building and returning a FlinkGcsFileSystem, uri={}, conf={}", uri, conf);
 		final org.apache.hadoop.fs.FileSystem hfs = new GoogleHadoopFileSystem();
 		hfs.initialize(uri, conf);
 		return new FlinkGcsFileSystem(hfs);
@@ -61,13 +61,13 @@ public class GcsFileSystemFactory implements FileSystemFactory {
 
 	@Override
 	public void configure(Configuration configuration) {
-		LOG.debug("Setting configuration:\n{}", configuration.toString());
+		LOG.debug("configure():\n{}", configuration.toString());
 		this.configuration = configuration;
 	}
 
 	@Override
 	public FileSystem create(URI uri) throws IOException {
-		LOG.debug("Creating and returning a new FlinkGcsFileSystem");
+		LOG.debug("create(): Creating and returning a new FlinkGcsFileSystem");
 		return buildFlinkGcsFileSystem(uri, buildHadoopConfiguration(configuration));
 	}
 }

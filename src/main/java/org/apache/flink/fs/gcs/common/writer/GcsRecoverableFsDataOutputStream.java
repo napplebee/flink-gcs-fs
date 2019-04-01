@@ -1,10 +1,10 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE gcsRecoverable
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this gcsRecoverable
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+ * "License"); you may not use this gcsRecoverable except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -18,21 +18,16 @@
 
 package org.apache.flink.fs.gcs.common.writer;
 
+import com.google.cloud.WriteChannel;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.core.fs.RecoverableFsDataOutputStream;
 import org.apache.flink.core.fs.RecoverableWriter;
-
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import static org.apache.flink.fs.gcs.common.FlinkGcsFileSystem.GCS_MULTIPART_MIN_PART_SIZE;
+import java.nio.ByteBuffer;
 
 /**
  * A RecoverableFsDataOutputStream to GCS that is based on a Resumable upload:
@@ -50,104 +45,91 @@ import static org.apache.flink.fs.gcs.common.FlinkGcsFileSystem.GCS_MULTIPART_MI
 public final class GcsRecoverableFsDataOutputStream extends RecoverableFsDataOutputStream {
 	private static final Logger LOG = LoggerFactory.getLogger(GcsRecoverableFsDataOutputStream.class);
 
-	private final GcsRecoverable file;
-	private final ByteArrayOutputStream stream;
-	private final FileSystem fileSystem;
+	/**
+	 * Previous GCSRecoverable
+	 */
+	private GcsRecoverable recoverable;
+	/**
+	 * Write channel
+	 */
+	private WriteChannel channel;
+	/**
+	 * Number of bytes written to GCS in this session
+	 */
+	private long written = 0L;
 
-	GcsRecoverableFsDataOutputStream(FileSystem fileSystem, GcsRecoverable file) throws IOException {
-		this(fileSystem, file, 0);
-		LOG.debug("Creating GcsRecoverableFsDataOutputStream for uri={} file={}", fileSystem.getUri(), file);
+	GcsRecoverableFsDataOutputStream(GcsRecoverable gcsRecoverable) throws IOException {
+		LOG.debug("Constructor: Creating GcsRecoverableFsDataOutputStream for recoverable={}", gcsRecoverable);
+		this.recoverable = gcsRecoverable;
+		this.channel = gcsRecoverable.getState().restore();
 	}
-
-	GcsRecoverableFsDataOutputStream(FileSystem fileSystem, GcsRecoverable file, int part) throws IOException {
-		LOG.debug("Creating GcsRecoverableFsDataOutputStream for uri={}, file={}, part={}", fileSystem.getUri(), file, part);
-		this.fileSystem = fileSystem;
-		this.file = file;
-		this.stream = new ByteArrayOutputStream();
-	}
-
-	// ------------------------------------------------------------------------
-	//  stream methods
-	// ------------------------------------------------------------------------
 
 	@Override
 	public void write(int b) throws IOException {
-		LOG.info("Write integer");
-		this.stream.write(b);
+	    final int FOUR_BYTES = 4;
+		LOG.debug("Write integer");
+		channel.write(ByteBuffer.allocate(FOUR_BYTES).putInt(b));
+		written += FOUR_BYTES; // four bytes for an integer
 	}
 
 	@Override
-	public void write(byte[] b, int off, int len) throws IOException {
-		LOG.info("Write bytes");
-		this.stream.write(b, off, len);
+	public void write(byte[] data, int off, int len) throws IOException {
+		LOG.debug("Write bytes, offset={}, length={}, data.length={}", off, len, data.length);
+		written += len;
+		channel.write(ByteBuffer.wrap(data, off, len));
 	}
 
 	@Override
 	public void flush() throws IOException {
-		LOG.info("Flush");
-		// Does nothing
-		this.stream.flush();
+		LOG.debug("flush(): NOOP");
 	}
 
 	@Override
 	public long getPos() throws IOException {
-		final int currentPosition = this.file.getPos() + this.stream.size();
-		LOG.info("getPos on {} position {}", this.file.getObjectName(), currentPosition);
-		// Return what already has been written
-		return currentPosition;
+	    final long pos = recoverable.getTotalBytesWritten() + written;
+	    LOG.debug("getPos(): pos={}", pos);
+		return pos;
 	}
 
 	@Override
 	public void sync() throws IOException {
-		LOG.info("sync");
+		LOG.debug("sync(): NOOP");
 	}
 
+	/**
+	 * Closes this stream. Closing the steam releases the local resources that the stream
+	 * uses, but does NOT result in durability of previously written data. This method
+	 * should be interpreted as a "close in order to dispose" or "close on failure".
+	 *
+	 * <p>In order to persist all previously written data, one needs to call the
+	 * {@link #closeForCommit()} method and call {@link Committer#commit()} on the retured
+	 * committer object.
+	 *
+	 * @throws IOException Thrown if an error occurred during closing.
+	 */
 	@Override
 	public void close() throws IOException {
-		LOG.info("close");
-		this.stream.close();
+		LOG.debug("close(): NOOP");
 	}
 
-	// ------------------------------------------------------------------------
-	//  recoverable stream methods
-	// ------------------------------------------------------------------------
-
-	@Override
+    /**
+     * Ensures all data so far is persistent and returns
+     * a handle to recover the stream at the current position.
+     */
+    @Override
 	public RecoverableWriter.ResumeRecoverable persist() throws IOException {
-		return persist(false);
+		LOG.debug("persist(): returning a new ResumeRecoverable");
+		return recoverable.copy(channel.capture(), recoverable.getTotalBytesWritten() + written);
 	}
 
-	public RecoverableWriter.ResumeRecoverable persist(boolean lastChunk) throws IOException {
-		final byte[] data = this.stream.toByteArray();
-		LOG.info("Persisting {} bytes", data.length);
-
-		// Wait until the buffer is big enough, or when it is the last part
-		if (data.length > GCS_MULTIPART_MIN_PART_SIZE || (lastChunk && data.length > 0)) {
-			try (FSDataOutputStream fs = this.fileSystem.create(this.file.getChunkPath(), true)) {
-				fs.write(data);
-			}
-			// Reset the existing buffer, this will not free up the memory
-			// but reset the buffer to start writing from the beginning again
-			this.stream.reset();
-
-			// Prepare to write the next chunk
-			return new GcsRecoverable(this.file, this.file.getPos() + 1);
-		}
-
-		// Nothing has changed, return the original file
-		return this.file;
-	}
-
+    /**
+     * Closes the stream, ensuring persistence of all data.
+     * This returns a Committer that can be used to publish (make visible) the file
+     * that the stream was writing to.
+     */
 	@Override
 	public Committer closeForCommit() throws IOException {
-		LOG.info("closeForCommit {}", this.file.getObjectName());
-
-		// Flush the last data to GCS
-		persist(true);
-
-		// Cleanup the memory
-		this.stream.close();
-
-		return new GcsCommitter(this.fileSystem, this.file);
+		LOG.info("closeForCommit(): returning a new ResumeRecoverable for commit");
+        return new GcsCommitter(recoverable.copy(channel.capture(), recoverable.getTotalBytesWritten() + written));
 	}
 }

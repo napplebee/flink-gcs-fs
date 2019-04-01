@@ -37,6 +37,7 @@ abstract class TestSpec extends FlatSpec with Matchers {
     * for bounded data sets
     */
   def withDataSetEnv(f: ExecutionEnvironment => Unit): Unit = {
+    log.info("Testing withDataSetEnv")
     val env = ExecutionEnvironment.createLocalEnvironment(loadConfiguration())
     f(env)
   }
@@ -46,8 +47,8 @@ abstract class TestSpec extends FlatSpec with Matchers {
     * for bounded or unbounded streams of data
     */
   def withDataStreamEnv(f: StreamExecutionEnvironment => Unit): Unit = {
-    log.info("WithDataStreamEnv, num-cpu={}", StreamExecutionEnvironment.getDefaultLocalParallelism)
-    val env = StreamExecutionEnvironment.createLocalEnvironment(StreamExecutionEnvironment.getDefaultLocalParallelism, loadConfiguration())
+    log.info("Testing withDataStreamEnv, num-cpu={}", StreamExecutionEnvironment.getDefaultLocalParallelism)
+    val env = StreamExecutionEnvironment.createLocalEnvironment(1, loadConfiguration())
     f(env)
   }
 }

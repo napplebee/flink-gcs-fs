@@ -18,12 +18,14 @@
 
 package org.apache.flink.fs.gcs.common.writer;
 
-import org.apache.flink.core.fs.Path;
+import com.google.cloud.RestorableState;
+import com.google.cloud.WriteChannel;
+import com.google.cloud.storage.BlobInfo;
 import org.apache.flink.core.fs.RecoverableWriter;
-
-import com.google.cloud.hadoop.gcsio.GoogleCloudStorageFileSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 /**
  * Data object to recover an GCS for a recoverable output stream.
@@ -31,90 +33,82 @@ import org.slf4j.LoggerFactory;
 public class GcsRecoverable implements RecoverableWriter.ResumeRecoverable {
 	private static final Logger LOG = LoggerFactory.getLogger(GcsRecoverable.class);
 
-	private String bucketName, objectName;
-	private int pos;
+	/**
+	 * GCS Blob Information
+	 */
+	private BlobInfo blobInfo;
+	/**
+	 * WriteChannel to recover
+	 */
+	private RestorableState<WriteChannel> state;
+	/**
+	 * Total bytes written to GCS
+	 */
+	private long totalBytesWritten;
+
+	public GcsRecoverable() {
+		LOG.debug("Creating GcsRecoverable - default constructor");
+	}
+
+	public GcsRecoverable(final BlobInfo blobInfo, final RestorableState<WriteChannel> state, final long totalBytesWritten) {
+		LOG.debug("Constructor: Creating GcsRecoverable blobInfo={}, state={}, pos={}", blobInfo, state, totalBytesWritten);
+		this.blobInfo = blobInfo;
+		this.state = state;
+		this.totalBytesWritten = totalBytesWritten;
+	}
+
+	public BlobInfo getBlobInfo() {
+		return blobInfo;
+	}
+
+	public void setBlobInfo(BlobInfo blobInfo) {
+		this.blobInfo = blobInfo;
+	}
+
+	public RestorableState<WriteChannel> getState() {
+		return state;
+	}
+
+	public void setState(RestorableState<WriteChannel> state) {
+		this.state = state;
+	}
+
+	public long getTotalBytesWritten() {
+		return totalBytesWritten;
+	}
+
+	public void setTotalBytesWritten(long totalBytesWritten) {
+		this.totalBytesWritten = totalBytesWritten;
+	}
 
 	/**
-	 * Empty default constructor for Kyro to create the (de)serializer.
+	 * Returns a new copy of GcsRecoverable
 	 */
-	public GcsRecoverable() {
-		LOG.debug("Creating GcsRecoverable");
+	public GcsRecoverable copy(RestorableState<WriteChannel> state, long totalBytesWritten) {
+		return new GcsRecoverable(this.blobInfo, state, totalBytesWritten);
 	}
 
-	public GcsRecoverable(Path gcsFullPath) {
-		LOG.debug("Creating GcsRecoverable for path={}", gcsFullPath);
-		this.bucketName = gcsFullPath.toUri().getAuthority();
-		this.objectName = gcsFullPath.toUri().getPath().substring(1);
-		this.pos = 0;
-
-		LOG.info("Deconstructed the bucket {} and object {}", this.bucketName, this.objectName);
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		GcsRecoverable that = (GcsRecoverable) o;
+		return Objects.equals(blobInfo, that.blobInfo) &&
+				Objects.equals(state, that.state) &&
+				Objects.equals(totalBytesWritten, that.totalBytesWritten);
 	}
 
-	public GcsRecoverable(GcsRecoverable oldRecoverable, int pos) {
-		this.bucketName = oldRecoverable.getBucketName();
-		this.objectName = oldRecoverable.getObjectName();
-		this.pos = pos;
-
-		LOG.info("Deconstructed the bucket {} and object {} at position {}", this.bucketName, this.objectName, this.pos);
-	}
-
-	public String getBucketName() {
-		return bucketName;
-	}
-
-	public String getObjectName() {
-		return objectName;
-	}
-
-	public int getPos() {
-		return this.pos;
-	}
-
-	public org.apache.hadoop.fs.Path getChunkPath() {
-		return new org.apache.hadoop.fs.Path(
-			String.format(
-				"%s://%s/%s.in-progress.%s",
-				GoogleCloudStorageFileSystem.SCHEME,
-				this.bucketName,
-				this.objectName,
-				this.pos
-			));
-	}
-
-	public org.apache.hadoop.fs.Path getCommitPath() {
-		return new org.apache.hadoop.fs.Path(
-			String.format(
-				"%s://%s/%s",
-				GoogleCloudStorageFileSystem.SCHEME,
-				this.bucketName,
-				this.objectName
-			));
+	@Override
+	public int hashCode() {
+		return Objects.hash(blobInfo, state, totalBytesWritten);
 	}
 
 	@Override
 	public String toString() {
-		return String.format(
-			"bucketName: '%s' , objectName: %s, position: %s",
-			bucketName, objectName, pos
-		);
-	}
-
-	@Override
-	public boolean equals(Object other) {
-		if (other == this) {
-			return true;
-		}
-
-        /* Check if o is an instance of Complex or not
-          "null instanceof [type]" also returns false */
-		if (!(other instanceof GcsRecoverable)) {
-			return false;
-		}
-
-		GcsRecoverable otherRecoverable = (GcsRecoverable) other;
-
-		return this.getBucketName().equals(otherRecoverable.getBucketName()) &&
-			this.getObjectName().equals(otherRecoverable.getObjectName()) &&
-			this.getPos() == otherRecoverable.getPos();
+		return "GcsRecoverable{" +
+				"blobInfo=" + blobInfo +
+				", state=" + state +
+				", totalBytesWritten=" + totalBytesWritten +
+				'}';
 	}
 }

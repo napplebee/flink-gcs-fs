@@ -10,18 +10,22 @@ scalaVersion := "2.11.12"
 val flinkVersion = "1.7.2"
 val hadoopVersion = "2.9.2"
 
+// compile
+libraryDependencies += "com.google.cloud" % "google-cloud-storage" % "1.66.0"
+
 // provided
 libraryDependencies += "com.google.cloud.bigdataoss" % "gcs-connector" % "1.9.4-hadoop3" % Provided // gcs-connector is provided on GCP - DataProc
-libraryDependencies += "org.apache.flink" % "flink-core" % flinkVersion % Provided
-libraryDependencies += "org.apache.flink" % "flink-hadoop-fs" % flinkVersion % Provided
-libraryDependencies += "org.apache.hadoop" % "hadoop-common" % hadoopVersion % Provided
-libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % hadoopVersion % Provided
+libraryDependencies += "org.apache.flink" % "flink-core" % flinkVersion % Provided // provided by flink distribution 
+libraryDependencies += "org.apache.flink" % "flink-hadoop-fs" % flinkVersion % Provided // provided by flink distribution
+libraryDependencies += "org.apache.hadoop" % "hadoop-common" % hadoopVersion % Provided // provided by flink distribution
+libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % hadoopVersion % Provided // provided by flink distribution
 
 // test scope
 libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.7" % Test
 libraryDependencies += "org.apache.flink" %% "flink-scala" % flinkVersion % Test
 libraryDependencies += "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % Test
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.4" % Test
 
 // testing configuration
 fork in Test := true
@@ -39,4 +43,5 @@ envVars in Test := Map(
   "HADOOP_CONF_DIR" -> "/Users/dennis/projects/flink-gcs-fs/src/test/resources",
   "FLINK_CONF_DIR" -> "/Users/dennis/projects/flink-gcs-fs/src/test/resources",
   "HADOOP_HOME" -> "/tmp"
+//  "GOOGLE_APPLICATION_CREDENTIALS" -> "/Users/dennis/projects/flink-gcs-fs/src/test/resources/gcs-python-test-service-account.json"
 )

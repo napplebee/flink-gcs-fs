@@ -34,12 +34,13 @@ import java.io.IOException;
  */
 public class GcsRecoverableSerializer implements SimpleVersionedSerializer<GcsRecoverable> {
 	private static final Logger LOG = LoggerFactory.getLogger(GcsRecoverableSerializer.class);
+
 	static final GcsRecoverableSerializer INSTANCE = new GcsRecoverableSerializer();
 
 	private final Kryo kyro;
 
 	public GcsRecoverableSerializer() {
-		LOG.debug("Creating GcsRecoverableSerializer");
+		LOG.debug("Constructor: Creating GcsRecoverableSerializer");
 		this.kyro = new Kryo();
 		this.kyro.register(GcsRecoverable.class);
 	}
@@ -51,7 +52,7 @@ public class GcsRecoverableSerializer implements SimpleVersionedSerializer<GcsRe
 
 	@Override
 	public byte[] serialize(GcsRecoverable gcsRecoverable) throws IOException {
-		LOG.debug("Serializing: {}", gcsRecoverable);
+		LOG.debug("Serializing recoverable={}", gcsRecoverable);
 		try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
 			try (Output output = new Output(baos)) {
 				kyro.writeObject(output, gcsRecoverable);

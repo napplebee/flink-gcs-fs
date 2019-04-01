@@ -18,49 +18,39 @@
 
 package org.apache.flink.fs.gcs.common.writer;
 
+import com.google.cloud.WriteChannel;
 import org.apache.flink.core.fs.RecoverableFsDataOutputStream;
 import org.apache.flink.core.fs.RecoverableWriter;
-
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.stream.IntStream;
 
 /**
-
+ * A committer can publish the file of a stream that was closed.
  */
 public class GcsCommitter implements RecoverableFsDataOutputStream.Committer {
 	private static final Logger LOG = LoggerFactory.getLogger(GcsCommitter.class);
 
 	private final GcsRecoverable recoverable;
-	private final FileSystem fileSystem;
+	private final WriteChannel channel;
 
-	public GcsCommitter(FileSystem fileSystem, GcsRecoverable recoverable) {
-		LOG.debug("Creating GcsCommitter uri={}", fileSystem.getUri());
-		this.fileSystem = fileSystem;
+	public GcsCommitter(final GcsRecoverable recoverable) {
+		LOG.debug("Constructor: Creating GcsCommitter for recoverable={}", recoverable);
 		this.recoverable = recoverable;
+		this.channel = recoverable.getState().restore();
 	}
 
 	/**
 	 * Commits the file, making it visible. The file will contain the exact data
 	 * as when the committer was created.
+	 *
+	 * @throws IOException Thrown if committing fails.
 	 */
 	@Override
 	public void commit() throws IOException {
-		LOG.info("Commit: {}", recoverable.toString());
-
-		// Get all the chunks
-		final Path[] parts = IntStream.range(0, this.recoverable.getPos())
-			.mapToObj(pos -> new GcsRecoverable(this.recoverable, pos).getChunkPath())
-			.toArray(Path[]::new);
-
-		LOG.info("Compose on: {} to create {}", Arrays.toString(parts), this.recoverable.getCommitPath());
-
-		this.fileSystem.concat(this.recoverable.getCommitPath(), parts);
+		LOG.info("commit(): closing WriteChannel");
+		channel.close();
 	}
 
 	/**
@@ -75,7 +65,8 @@ public class GcsCommitter implements RecoverableFsDataOutputStream.Committer {
 	 */
 	@Override
 	public void commitAfterRecovery() throws IOException {
-		LOG.info("CommitAfterRecovery {}", recoverable.toString());
+		LOG.info("commitAfterRecovery(): closing WriteChannel");
+		channel.close();
 	}
 
 	/**
@@ -85,7 +76,7 @@ public class GcsCommitter implements RecoverableFsDataOutputStream.Committer {
 	 */
 	@Override
 	public RecoverableWriter.CommitRecoverable getRecoverable() {
-		LOG.info("GetRecoverable {}", recoverable.toString());
-		return this.recoverable;
+		LOG.info("getRecoverable(): returning the recoverable");
+		return recoverable;
 	}
 }
